@@ -38,7 +38,7 @@ function insertRestOfPath(attributeName, parentUrl) {
 		var newUrl = parentUrl.substr(0, parentUrl.lastIndexOf('/') + 1) + elementUrl;
 		
 		element.attr(attributeName, newUrl);
-	}
+	};
 }
 	
 /**
@@ -66,7 +66,7 @@ function insertRestOfPath(attributeName, parentUrl) {
  * 
  */
 angular
-		.module("relativePathsInPartial", [])
+		.module('relativePathsInPartial', [])
 		.config(function($httpProvider) {
 
 					$httpProvider.interceptors.push(function() {
@@ -89,7 +89,7 @@ angular
 									elem.filter('script').each(insertRestOfPath('src', url));
 									elem.filter('img').each(insertRestOfPath('src', url));
 									
-									// TODO: find an efficient way to process "src" attribute of "ng-include"
+									// TODO: find an efficient way to process 'src' attribute of 'ng-include'
 									// elem.find('ng-include').each(replaceUrlFunc('src'));
 
 									/* TODO: find a way to get the html as text from the elem
