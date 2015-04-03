@@ -15,6 +15,38 @@ function isAbsoluteUrl(url){
 }
 
 /**
+ * @author Mohamed Kamal Kamaly
+ * A function that traverse the full tree of a jqLite element
+ * and perform operations on its nodes
+ **/
+function searchAndApply(elem, opertations){
+	if(elem.length == 0)
+		return;
+
+	for(var i=0; i<elem.length; i++){
+		for(var j=0; j<opertations.length; j++){
+			if(opertations[j].matcherFunc(elem[i])){
+				opertations[j].applyFunc(elem[i]);
+			}
+		}
+	}
+	
+	/* cannot use setTimeout for the recursion because the interceptor
+	   has to return the proccessed response */
+	searchAndApply(elem.children(), opertations);
+}
+
+/**
+ * @author Mohamed Kamal Kamaly
+ * a property matcher to be used in searchAndApply function
+ **/
+function propertyMatcher(propertyName, propertyValue){
+	return function(element){
+		return element[propertyName] === propertyValue;
+	}
+}
+
+/**
  * @name isAbsoluteUrl
  * @author Mohamed Kamal Kamaly
  * @description
@@ -22,12 +54,12 @@ function isAbsoluteUrl(url){
  * # isAbsoluteUrl
  * 
  * A function that returns a function that can be passed in
- * the  a JQuery.each() to replace the attributes with
+ * the searchAndApply function to replace the attributes with
  * relative paths to full paths 
  **/
 function insertRestOfPath(attributeName, parentUrl) {
-	return function() {
-		var element = angular.element(this);
+	return function(elementNode) {
+		var element = angular.element(elementNode);
 		
 		var elementUrl = element.attr(attributeName);
 		
@@ -68,7 +100,6 @@ function insertRestOfPath(attributeName, parentUrl) {
 angular
 		.module('relativePathsInPartial', [])
 		.config(function($httpProvider) {
-
 					$httpProvider.interceptors.push(function() {
 						return {
 							response : function(response) {
@@ -82,27 +113,31 @@ angular
 								 * into the cache and do not process it again
 								 */
 								if (url.lastIndexOf('.html') === url.length - 5) {
-									
-									var elem = angular.element(response.data);
+									var elem = new angular.element(response.data);
 
-									elem.filter('link').each(insertRestOfPath('href', url));
-									elem.filter('script').each(insertRestOfPath('src', url));
-									elem.filter('img').each(insertRestOfPath('src', url));
-									
+									var myOperations = [{
+										matcherFunc: propertyMatcher('tagName', 'LINK'),
+										applyFunc: insertRestOfPath('href', url)
+									},{
+										matcherFunc: propertyMatcher('tagName', 'SCRIPT'),
+										applyFunc: insertRestOfPath('src', url)
+									},{
+										matcherFunc: propertyMatcher('tagName', 'IMG'),
+										applyFunc: insertRestOfPath('src', url)
+									}];
+
 									// TODO: find an efficient way to process 'src' attribute of 'ng-include'
 									// elem.find('ng-include').each(replaceUrlFunc('src'));
-
-									/* TODO: find a way to get the html as text from the elem
-									 * .html() doesn't work
-									 */
-									response.data = elem.unwrap();
+									searchAndApply(elem, myOperations);
+									
+									response.data = angular.element('<div />').append(elem).html();
 								}
 
 								return response;
 							}
 						};
 					});
+		});
 
-				});
 
 })();
