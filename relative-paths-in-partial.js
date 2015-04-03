@@ -97,47 +97,46 @@ function insertRestOfPath(attributeName, parentUrl) {
  * relativePathsInPartial uses angular.element (jqLite and doesn't depend on JQuery
  * 
  */
-angular
-		.module('relativePathsInPartial', [])
-		.config(function($httpProvider) {
-					$httpProvider.interceptors.push(function() {
-						return {
-							response : function(response) {
-								var url = response.config.url;
+angular.module('relativePathsInPartial', [])
+	.config(function($httpProvider) {
+		$httpProvider.interceptors.push(function() {
+			return {
+				response : function(response) {
+					var url = response.config.url;
 
-								/*
-								 * TODO: check if the request is sent with template
-								 * cache to be sure that it is an angular template
-								 * 
-								 * put the template after processing
-								 * into the cache and do not process it again
-								 */
-								if (url.lastIndexOf('.html') === url.length - 5) {
-									var elem = new angular.element(response.data);
+					/*
+					 * TODO: check if the request is sent with template
+					 * cache to be sure that it is an angular template
+					 * 
+					 * put the template after processing
+					 * into the cache and do not process it again
+					 */
+					if (url.lastIndexOf('.html') === url.length - 5) {
+						var elem = new angular.element(response.data);
 
-									var myOperations = [{
-										matcherFunc: propertyMatcher('tagName', 'LINK'),
-										applyFunc: insertRestOfPath('href', url)
-									},{
-										matcherFunc: propertyMatcher('tagName', 'SCRIPT'),
-										applyFunc: insertRestOfPath('src', url)
-									},{
-										matcherFunc: propertyMatcher('tagName', 'IMG'),
-										applyFunc: insertRestOfPath('src', url)
-									}];
+						var myOperations = [{
+							matcherFunc: propertyMatcher('tagName', 'LINK'),
+							applyFunc: insertRestOfPath('href', url)
+						},{
+							matcherFunc: propertyMatcher('tagName', 'SCRIPT'),
+							applyFunc: insertRestOfPath('src', url)
+						},{
+							matcherFunc: propertyMatcher('tagName', 'IMG'),
+							applyFunc: insertRestOfPath('src', url)
+						}];
 
-									// TODO: find an efficient way to process 'src' attribute of 'ng-include'
-									// elem.find('ng-include').each(replaceUrlFunc('src'));
-									searchAndApply(elem, myOperations);
-									
-									response.data = angular.element('<div />').append(elem).html();
-								}
+						// TODO: find an efficient way to process 'src' attribute of 'ng-include'
+						// elem.find('ng-include').each(replaceUrlFunc('src'));
+						searchAndApply(elem, myOperations);
 
-								return response;
-							}
-						};
-					});
+						response.data = angular.element('<div />').append(elem).html();
+					}
+
+					return response;
+				}
+			};
 		});
+	});
 
 
 })();
