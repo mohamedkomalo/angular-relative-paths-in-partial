@@ -63,7 +63,7 @@ function insertRestOfPath(attributeName, parentUrl) {
 		
 		var elementUrl = element.attr(attributeName);
 		
-		if(isAbsoluteUrl(elementUrl)){
+		if(!elementUrl || isAbsoluteUrl(elementUrl)){
 			return;
 		}
 
