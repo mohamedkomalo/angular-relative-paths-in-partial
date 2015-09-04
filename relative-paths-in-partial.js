@@ -1,6 +1,22 @@
 'use strict';
 
 (function(){
+
+/**
+ * JS equivalent of Java hash codo function.
+ * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+ **/
+function hashCode(string) {
+        var hash = 0, i, chr, len;
+        if (string.length == 0) return hash;
+        for (i = 0, len = string.length; i < len; i++) {
+            chr = string.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+}
+    
 /**
  * @name isAbsoluteUrl
  * @author Mohamed Kamal Kamaly
@@ -75,7 +91,7 @@ function insertRestOfPath(attributeName, parentUrl) {
 	
 /**
  * @name relativePathsInPartial
- * @author Mohamed Kamal Kamaly
+ * @author Mohamed Kamal Kamaly, David Eberlein
  * @description
  * 
  * # relativePathsInPartial
@@ -94,49 +110,78 @@ function insertRestOfPath(attributeName, parentUrl) {
  * and returns in a response, relativePathsInPartial intercepts this response, modify all the paths to have full
  * path relative to parent.
  * 
- * relativePathsInPartial uses angular.element (jqLite and doesn't depend on JQuery
+ * You can configure a url prefix to restrict the replacements to only be done on url's that start with the given prefix.
+ * This can be done using the relativePathsInterceptorProvider in your module.configure() function.
+ * This functionality requires the support of String.startsWith or a polyfill 
+ * (e.g. https://github.com/MathRobin/string.startsWith)
+ * 
+ * relativePathsInPartial uses angular.element (jqLite and doesn't depend on JQuery)
  * 
  */
 angular.module('relativePathsInPartial', [])
-	.config(function($httpProvider) {
-		$httpProvider.interceptors.push(function() {
-			return {
-				response : function(response) {
-					var url = response.config.url;
+	.provider("relativePathsInterceptor", function () {
 
-					/*
-					 * TODO: check if the request is sent with template
-					 * cache to be sure that it is an angular template
-					 * 
-					 * put the template after processing
-					 * into the cache and do not process it again
-					 */
-					if (url.lastIndexOf('.html') === url.length - 5) {
-						var elem = new angular.element(response.data);
+            var prefix = "";
+            var processedHashCache = {};
 
-						var myOperations = [{
-							matcherFunc: propertyMatcher('tagName', 'LINK'),
-							applyFunc: insertRestOfPath('href', url)
-						},{
-							matcherFunc: propertyMatcher('tagName', 'SCRIPT'),
-							applyFunc: insertRestOfPath('src', url)
-						},{
-							matcherFunc: propertyMatcher('tagName', 'IMG'),
-							applyFunc: insertRestOfPath('src', url)
-						}];
+            function _isProcessedYet(url, data) {
+                var cacheHash = processedHashCache[url];
+                if (cacheHash === undefined) return false;
+                var dataHash = hashCode(data);
+                return dataHash === cacheHash;
+            }
 
-						// TODO: find an efficient way to process 'src' attribute of 'ng-include'
-						// elem.find('ng-include').each(replaceUrlFunc('src'));
-						searchAndApply(elem, myOperations);
+            function _isHtml(url) {
+                return url.lastIndexOf('.html') === url.length - 5;
+            }
 
-						response.data = angular.element('<div />').append(elem).html();
-					}
+            return {
+                /**
+                 * Only include urls with the given prefix.
+                 * @param value @type {string}
+                 */
+                setInteceptionPrefix: function (value) {
+                    prefix = value;
+                },
+                $get: function () {
+                    return {
+                        response: function (response) {
+                            var url = response.config.url;
 
-					return response;
-				}
-			};
-		});
-	});
+                            if (_isHtml(url) && url.startsWith(prefix) && !_isProcessedYet(url, response.data)) {
+
+                                var elem = new angular.element(response.data);
+
+                                var myOperations = [{
+                                    matcherFunc: propertyMatcher('tagName', 'LINK'),
+                                    applyFunc: insertRestOfPath('href', url)
+                                }, {
+                                    matcherFunc: propertyMatcher('tagName', 'SCRIPT'),
+                                    applyFunc: insertRestOfPath('src', url)
+                                }, {
+                                    matcherFunc: propertyMatcher('tagName', 'IMG'),
+                                    applyFunc: insertRestOfPath('src', url)
+                                }];
+
+                                // TODO: find an efficient way to process 'src' attribute of 'ng-include'
+                                // elem.find('ng-include').each(replaceUrlFunc('src'));
+                                searchAndApply(elem, myOperations);
+                                response.data = angular.element('<div />').append(elem).html();
+
+                                // Since angular caches our intercepted data we save a hash of the data
+                                // to be able to check if data has already been processed or not
+                                processedHashCache[url] = hashCode(response.data);
+                            }
+
+                            return response;
+                        }
+                    };
+                }
+            };
+        })
+        .config(function ($httpProvider) {
+            $httpProvider.interceptors.push("relativePathsInterceptor");
+        });
 
 
 })();
