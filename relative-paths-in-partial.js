@@ -179,9 +179,9 @@ angular.module('relativePathsInPartial', [])
                 }
             };
         })
-        .config(function ($httpProvider) {
+        .config(["$httpProvider", function ($httpProvider) {
             $httpProvider.interceptors.push("relativePathsInterceptor");
-        });
+        }]);
 
 
 })();
